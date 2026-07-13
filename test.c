@@ -50,7 +50,7 @@ void shift_rows(unsigned char state[4][4]){
 
 unsigned char xtime(unsigned char x){
     return (unsigned char)((x << 1) ^ ((x & 0x80) ? 0x1b : 0x00));
-    };
+    }
 
 void MixColumns(unsigned char state[4][4])
 {
@@ -111,12 +111,26 @@ int main(void){
         {0x0d, 0x0e, 0x0f, 0x10}
     };
 
+    for(int i=1; i<10; i++){
+        printf("Round %d:\n", i);
+        printf("=====================\n");
+        sub_bytes(state);
+        printf("=====================\n");
+        shift_rows(state);
+        printf("=====================\n");
+        MixColumns(state);
+        printf("=====================\n");
+        AddRoundKey(state, roundKey);
+        printf("=====================\n");
+        printf("Round %d finish. \n", i);
+        printf("=====================\n");
+    }
+    printf("=====================\n");
+    printf("Round 10:\n");
     printf("=====================\n");
     sub_bytes(state);
     printf("=====================\n");
     shift_rows(state);
-    printf("=====================\n");
-    MixColumns(state);
     printf("=====================\n");
     AddRoundKey(state, roundKey);
     return 0;
