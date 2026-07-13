@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-const int nkey[10] = {};
-
 unsigned char sbox[16][16] = {
     {0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76},
     {0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0},
@@ -29,16 +27,98 @@ void sub_bytes(unsigned char state[4][4]){
         }
         printf("\n");
     }
-};
+}
 
+void shift_rows(unsigned char state[4][4]){
+    unsigned char temp;
+    for(int i=1; i<4; i++){
+        for(int j=0; j<i; j++){
+            temp = state[i][0]; // 맨 앞의 값을 저장
+            for(int k=0; k<3; k++){
+                state[i][k] = state[i][k+1];
+            } // 나머지 값을 왼쪽으로 한 칸씩 이동
+            state[i][3] = temp; // 마지막 값을 맨 앞의 값으로 채움
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            printf("%02x ", state[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+unsigned char xtime(unsigned char x){
+    return (unsigned char)((x << 1) ^ ((x & 0x80) ? 0x1b : 0x00));
+    };
+
+void MixColumns(unsigned char state[4][4])
+{
+    unsigned char temp[4][4];
+    
+    for (int i = 0; i < 4; i++) {
+        temp[0][i] =
+            xtime(state[0][i]) ^
+            (xtime(state[1][i]) ^ state[1][i]) ^
+            state[2][i] ^
+            state[3][i];
+        temp[1][i] =
+            state[0][i] ^
+            xtime(state[1][i]) ^
+            (xtime(state[2][i]) ^ state[2][i]) ^
+            state[3][i];
+        temp[2][i] =
+            state[0][i] ^
+            state[1][i] ^
+            xtime(state[2][i]) ^
+            (xtime(state[3][i]) ^ state[3][i]);
+        temp[3][i] =
+            (xtime(state[0][i]) ^ state[0][i]) ^
+            state[1][i] ^
+            state[2][i] ^
+            xtime(state[3][i]);
+    }
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            state[i][j] = temp[i][j];
+            printf("%02x ", (unsigned int)state[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+void AddRoundKey(unsigned char state[4][4], unsigned char roundKey[4][4]){
+    for(int i=0; i<4; i++){
+        for(int j=0; j<4; j++){
+            state[i][j] ^= roundKey[i][j];
+            printf("%02x ", state[i][j]);
+        }
+        printf("\n");
+    }    
+}
 
 int main(void){
     unsigned char state[4][4] = {
-        {0x11, 0x11, 0x11, 0x11},
-        {0x22, 0x22, 0x22, 0x22},
-        {0x33, 0x33, 0x33, 0x33},
-        {0x44, 0x44, 0x44, 0x44}
+        {0x11, 0x12, 0x13, 0x14},
+        {0x21, 0x22, 0x23, 0x24},
+        {0x31, 0x32, 0x33, 0x34},
+        {0x41, 0x42, 0x43, 0x44}
     };
+    unsigned char roundKey[4][4] = {
+        {0x01, 0x02, 0x03, 0x04},
+        {0x05, 0x06, 0x07, 0x08},
+        {0x09, 0x0a, 0x0b, 0x0c},
+        {0x0d, 0x0e, 0x0f, 0x10}
+    };
+
+    printf("=====================\n");
     sub_bytes(state);
+    printf("=====================\n");
+    shift_rows(state);
+    printf("=====================\n");
+    MixColumns(state);
+    printf("=====================\n");
+    AddRoundKey(state, roundKey);
     return 0;
+    
 }
