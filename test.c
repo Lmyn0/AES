@@ -97,42 +97,126 @@ void AddRoundKey(unsigned char state[4][4], unsigned char roundKey[4][4]){
     }    
 }
 
+void RotWord(unsigned char word[4]){
+    unsigned char temp = word[0];
+    
+    for(int i=0; i<3; i++){
+        word [i] = word [i+1];
+    }
+    word [3] = temp;
+}
+
+void SubWord(unsigned char word[4]){
+    for(int i=0; i<4; i++){
+        unsigned char row = (word[i] >> 4) & 0x0f;
+        unsigned char column = (word[i]) & 0x0f;
+
+        word[i] = sbox[row][column];
+    }
+}
+
+static const unsigned char rcon[10] = {
+    0x01, 0x02, 0x04, 0x08, 0x10,
+    0x20, 0x40, 0x80, 0x1b, 0x36
+};
+
+void keyExpansion(const unsigned char key[4][4], unsigned char expandedKey[176] ){
+    unsigned char temp[4];
+    int bytesGenerated = 16;
+    int rconIndex = 0;
+
+    for (int column = 0; column < 4; column++) {
+        for (int row = 0; row < 4; row++) {
+            expandedKey[column * 4 + row] =
+                key[row][column];
+        }
+    }
+
+    while (bytesGenerated < 176) {
+        for (int i = 0; i < 4; i++) {
+            temp[i] =
+                expandedKey[bytesGenerated - 4 + i];
+        }
+
+        if (bytesGenerated % 16 == 0) {
+            RotWord(temp);
+            SubWord(temp);
+
+            temp[0] ^= rcon[rconIndex];
+            rconIndex++;
+        }
+
+        for (int i = 0; i < 4; i++) {
+            expandedKey[bytesGenerated] =
+                expandedKey[bytesGenerated - 16] ^ temp[i];
+
+            bytesGenerated++;
+        }
+    }
+}
+
+void GetRoundKey(
+    const unsigned char expandedKey[176],
+    int round,
+    unsigned char roundKey[4][4])
+{
+    int start = round * 16;
+
+    for (int column = 0; column < 4; column++) {
+        for (int row = 0; row < 4; row++) {
+            roundKey[row][column] =
+                expandedKey[start + column * 4 + row];
+        }
+    }
+}
 int main(void){
     unsigned char state[4][4] = {
-        {0x11, 0x12, 0x13, 0x14},
-        {0x21, 0x22, 0x23, 0x24},
-        {0x31, 0x32, 0x33, 0x34},
-        {0x41, 0x42, 0x43, 0x44}
+        {0x32, 0x88, 0x31, 0xe0},
+        {0x43, 0x5a, 0x31, 0x37},
+        {0xf6, 0x30, 0x98, 0x07},
+        {0xa8, 0x8d, 0xa2, 0x34}
     };
-    unsigned char roundKey[4][4] = {
-        {0x01, 0x02, 0x03, 0x04},
-        {0x05, 0x06, 0x07, 0x08},
-        {0x09, 0x0a, 0x0b, 0x0c},
-        {0x0d, 0x0e, 0x0f, 0x10}
+    unsigned char key[4][4] = {
+        {0x2b, 0x28, 0xab, 0x09},
+        {0x7e, 0xae, 0xf7, 0xcf},
+        {0x15, 0xd2, 0x15, 0x4f},
+        {0x16, 0xa6, 0x88, 0x3c}
     };
+    unsigned char expandedKey[176];
+    unsigned char roundKey[4][4];
 
-    for(int i=1; i<10; i++){
-        printf("Round %d:\n", i);
-        printf("=====================\n");
+    keyExpansion(key, expandedKey);
+
+    AddRoundKey(state, key);
+    for(int round=1; round<10 ; round++){
+        printf("================\n");
+        printf("Round %d\n", round);
+        printf("=================\n");
         sub_bytes(state);
-        printf("=====================\n");
+        printf("=================\n");
         shift_rows(state);
-        printf("=====================\n");
+        printf("=================\n");
         MixColumns(state);
-        printf("=====================\n");
+        printf("=================\n");
+        GetRoundKey(expandedKey, round, roundKey);
         AddRoundKey(state, roundKey);
-        printf("=====================\n");
-        printf("Round %d finish. \n", i);
-        printf("=====================\n");
+        printf("=================\n");
+        printf("Round %d finish.\n", round);
+        printf("=================\n");
     }
-    printf("=====================\n");
-    printf("Round 10:\n");
-    printf("=====================\n");
+    printf("=================\n");
+    printf("Round 10\n");
+    printf("=================\n");
+
     sub_bytes(state);
-    printf("=====================\n");
+    printf("=================\n");
     shift_rows(state);
-    printf("=====================\n");
+    printf("=================\n");
+    GetRoundKey(expandedKey, 10, roundKey);
     AddRoundKey(state, roundKey);
+
+    printf("=================\n");
+    printf("Round 10 finish.\n");
+    printf("=================\n");
     return 0;
-    
 }
