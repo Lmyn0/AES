@@ -1,0 +1,1 @@
+void Cipher_AES(unsigned char plain[16], unsigned char key[4][4], unsigned char outblock[16]);

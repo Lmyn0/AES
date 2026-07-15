@@ -23,9 +23,9 @@ void sub_bytes(unsigned char state[4][4]){
     for(int i=0; i<4; i++){
         for(int j=0; j<4; j++){
             state[i][j] = sbox[(state[i][j] >> 4) & 0x0f][state[i][j] & 0x0f];
-            printf("%02x ", state[i][j]);
+            //printf("%02x ", state[i][j]);
         }
-        printf("\n");
+       // printf("\n");
     }
 }
 
@@ -42,9 +42,9 @@ void shift_rows(unsigned char state[4][4]){
     }
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            printf("%02x ", state[i][j]);
+           //printf("%02x ", state[i][j]);
         }
-        printf("\n");
+        //printf("\n");
     }
 }
 
@@ -81,9 +81,9 @@ void MixColumns(unsigned char state[4][4])
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             state[i][j] = temp[i][j];
-            printf("%02x ", (unsigned int)state[i][j]);
+            //printf("%02x ", (unsigned int)state[i][j]);
         }
-        printf("\n");
+        //printf("\n");
     }
 }
 
@@ -91,9 +91,9 @@ void AddRoundKey(unsigned char state[4][4], unsigned char roundKey[4][4]){
     for(int i=0; i<4; i++){
         for(int j=0; j<4; j++){
             state[i][j] ^= roundKey[i][j];
-            printf("%02x ", state[i][j]);
+            //printf("%02x ", state[i][j]);
         }
-        printf("\n");
+        //printf("\n");
     }    
 }
 
@@ -169,54 +169,45 @@ void GetRoundKey(
         }
     }
 }
-int main(void){
-    unsigned char state[4][4] = {
-        {0x32, 0x88, 0x31, 0xe0},
-        {0x43, 0x5a, 0x31, 0x37},
-        {0xf6, 0x30, 0x98, 0x07},
-        {0xa8, 0x8d, 0xa2, 0x34}
-    };
-    unsigned char key[4][4] = {
-        {0x2b, 0x28, 0xab, 0x09},
-        {0x7e, 0xae, 0xf7, 0xcf},
-        {0x15, 0xd2, 0x15, 0x4f},
-        {0x16, 0xa6, 0x88, 0x3c}
-    };
+
+void load_state(unsigned char plain[16], unsigned char state[4][4]){   
+    for(int i=0; i<4; i++){
+        for(int j=0; j<4; j++){
+            state[j][i] = plain[4*i+j]; 
+        }
+    }
+}
+
+void Cipher_AES(unsigned char plain[16], unsigned char key[4][4], unsigned char outblock[16]){
+    
+    unsigned char state[4][4];
     unsigned char expandedKey[176];
     unsigned char roundKey[4][4];
 
     keyExpansion(key, expandedKey);
+    load_state(plain, state);
 
     AddRoundKey(state, key);
+
     for(int round=1; round<10 ; round++){
-        printf("================\n");
-        printf("Round %d\n", round);
-        printf("=================\n");
         sub_bytes(state);
-        printf("=================\n");
         shift_rows(state);
-        printf("=================\n");
         MixColumns(state);
-        printf("=================\n");
         GetRoundKey(expandedKey, round, roundKey);
         AddRoundKey(state, roundKey);
-        printf("=================\n");
-        printf("Round %d finish.\n", round);
-        printf("=================\n");
     }
-    printf("=================\n");
-    printf("Round 10\n");
-    printf("=================\n");
 
     sub_bytes(state);
-    printf("=================\n");
     shift_rows(state);
-    printf("=================\n");
+
     GetRoundKey(expandedKey, 10, roundKey);
     AddRoundKey(state, roundKey);
-
-    printf("=================\n");
-    printf("Round 10 finish.\n");
-    printf("=================\n");
-    return 0;
+    
+    for(int i=0; i<4; i++){
+        for(int j=0; j<4; j++){
+            outblock[4*i + j] = state[j][i];
+        }
+    }
 }
+
+
