@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include "test.h"
 
-void CFB_encrypt(unsigned char plain[16], unsigned char next_IV[16], unsigned char ciph[16]){
+void CFB_encrypt(unsigned char plain[16], unsigned char IV[16], unsigned char ciph[16]){
 
     for(int i=0; i<16; i++){
-        ciph[i] = plain[i] ^ next_IV[i];    
+        ciph[i] = plain[i] ^ IV[i];    
     }
 }
 

@@ -18,6 +18,5 @@ int main(){
     
     Cipher_AES(plain, key, outblock);
 
-
     return 0;
 }
