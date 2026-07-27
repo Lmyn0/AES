@@ -114,6 +114,6 @@ int main(){
         cipher[i] = keystream[i] ^ plain[i];
     }
     for(size_t i = 0; i < plain_length; i++){
-    printf("%02x", cipher[i]);
+        printf("%02x", cipher[i]);
     }
 }
