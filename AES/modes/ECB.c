@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "aes.h"
+#include "../aes.h"
 
 int main(){
     unsigned char plain[16]={

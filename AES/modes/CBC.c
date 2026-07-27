@@ -1,28 +1,20 @@
 #include <stdio.h>
-#include "aes.h"
+#include "../aes.h"
 
-void CFB_encrypt(unsigned char plain[16], unsigned char IV[16], unsigned char ciph[16]){
-
-    for(int i=0; i<16; i++){
-        ciph[i] = plain[i] ^ IV[i];    
-    }
-}
-
-int main(){
-    unsigned char IV[16] = {
+unsigned char IV[16] = {
         0x00, 0x01, 0x02, 0x03, 
         0x04, 0x05, 0x06, 0x07, 
         0x08, 0x09, 0x0A, 0x0B, 
         0x0C, 0x0D, 0x0E, 0x0F
     };
-    unsigned char key[4][4] = {
+unsigned char outblock[16];
+unsigned char key[4][4] = {
         {0x2b, 0x28, 0xab, 0x09},
         {0x7e, 0xae, 0xf7, 0xcf},
         {0x15, 0xd2, 0x15, 0x4f},
         {0x16, 0xa6, 0x88, 0x3c}
     };
-    unsigned char outblock[16];
-    unsigned char plain[4][16]={
+unsigned char plain[4][16]={
         {0x6B, 0xC1, 0xBE, 0xE2,
         0x2E, 0x40, 0x9F, 0x96,
         0xE9, 0x3D, 0x7E, 0x11,
@@ -43,23 +35,38 @@ int main(){
         0xAD, 0x2B, 0x41, 0x7B,
         0xE6, 0x6C, 0x37, 0x10}
     };
-    unsigned char ciph[4][16];
+unsigned char ciph[4][16];
 
-    Cipher_AES(IV, key, outblock);
-    
-    CFB_encrypt(plain[0], outblock, ciph[0]);
-
-    for(int i=1; i<4; i++){
-        Cipher_AES(ciph[i-1], key, outblock);
-        CFB_encrypt(plain[i], outblock, ciph[i]);
+void CBC_encrypt(unsigned char plain[4][16], unsigned char IV[16], unsigned char outblock[16]){
+    unsigned char temp[16]; // 입력값
+    for(int i=0 ; i<16 ; i++){
+        temp[i] = IV[i] ^ plain[0][i];
+    }
+    Cipher_AES(temp, key, outblock);
+    for(int i=0 ; i<16 ; i++){
+        ciph[0][i] = outblock[i];
     }
 
+    for(int i=1 ; i<4 ; i++){
+        for(int j=0 ; j<16 ; j++){
+            temp[j] = ciph[i-1][j] ^ plain[i][j];
+        }
+        Cipher_AES(temp, key, outblock);
+        for(int n=0 ; n<16 ; n++){
+            ciph[i][n] = outblock[n];
+        }
+    }
+}
+
+int main(){
+    CBC_encrypt(plain, IV, outblock);
+    
     for (int b=0; b<4; b++) {
         for (int i = 0; i < 16; i++) {
             printf("%02x", ciph[b][i]);
         }
         printf("\n");
     }
-
+    
     return 0;
 }

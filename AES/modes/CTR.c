@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "aes.h"
+#include "../aes.h"
 
 unsigned char IV[16] = {
         0x00, 0x01, 0x02, 0x03, 
@@ -36,37 +36,39 @@ unsigned char plain[4][16]={
         0xE6, 0x6C, 0x37, 0x10}
     };
 unsigned char ciph[4][16];
+unsigned char counter[16] = {
+    0xf0, 0xf1, 0xf2, 0xf3,
+    0xf4, 0xf5, 0xf6, 0xf7,
+    0xf8, 0xf9, 0xfa, 0xfb,
+    0xfc, 0xfd, 0xfe, 0xff
+};
 
-void CBC_encrypt(unsigned char plain[4][16], unsigned char IV[16], unsigned char outblock[16]){
-    unsigned char temp[16]; // 입력값
-    for(int i=0 ; i<16 ; i++){
-        temp[i] = IV[i] ^ plain[0][i];
-    }
-    Cipher_AES(temp, key, outblock);
-    for(int i=0 ; i<16 ; i++){
-        ciph[0][i] = outblock[i];
-    }
-
-    for(int i=1 ; i<4 ; i++){
+void CTR_encrypt(){
+    
+    for(int i=0 ; i<4 ; i++){
+        Cipher_AES(counter, key, outblock);
         for(int j=0 ; j<16 ; j++){
-            temp[j] = ciph[i-1][j] ^ plain[i][j];
+            ciph[i][j] = outblock[j] ^ plain[i][j];
         }
-        Cipher_AES(temp, key, outblock);
-        for(int n=0 ; n<16 ; n++){
-            ciph[i][n] = outblock[n];
+    for(int i=15 ; i>=0 ; i--){
+        counter[i] += 0x01;
+        if(counter[i] != 0x00){
+            break;
+            }
         }
     }
 }
 
 int main(){
-    CBC_encrypt(plain, IV, outblock);
-    
+    CTR_encrypt();
+
     for (int b=0; b<4; b++) {
         for (int i = 0; i < 16; i++) {
             printf("%02x", ciph[b][i]);
         }
         printf("\n");
     }
-    
+
     return 0;
+
 }
