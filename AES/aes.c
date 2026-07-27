@@ -18,17 +18,16 @@ unsigned char sbox[16][16] = {
     {0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf},
     {0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16}
 };
-
+/*1. 상위 4비트와 하위 4비트를 구분해서 
+  2. 상위 4비트는 행의 인덱스, 하위 4비트는 열의 인덱스로 사용하여서 값을 치환*/
 void sub_bytes(unsigned char state[4][4]){
     for(int i=0; i<4; i++){
         for(int j=0; j<4; j++){
             state[i][j] = sbox[(state[i][j] >> 4) & 0x0f][state[i][j] & 0x0f];
-            //printf("%02x ", state[i][j]);
         }
-       // printf("\n");
     }
 }
-
+//왼쪽 순환 함수 (1열은 그대로, 2열은 1칸/3열은 2칸/4열은 3칸 왼쪽으로 이동)
 void shift_rows(unsigned char state[4][4]){
     unsigned char temp;
     for(int i=1; i<4; i++){
@@ -40,18 +39,14 @@ void shift_rows(unsigned char state[4][4]){
             state[i][3] = temp; // 마지막 값을 맨 앞의 값으로 채움
         }
     }
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-           //printf("%02x ", state[i][j]);
-        }
-        //printf("\n");
-    }
 }
-
+/*1. 바이트를 왼쪽으로 1비트 이동(2를 곱함)
+  2. 기존 값의 최상위 비트가 1이었다면 0x1b와, 1이 아니었다면 0x00과 XOR*/
 unsigned char xtime(unsigned char x){
     return (unsigned char)((x << 1) ^ ((x & 0x80) ? 0x1b : 0x00));
     }
-
+/*1. [ 01 : 그대로 / 02 : xtime / 03 : 02 ^ 01 ] 정해진 규칙
+  2. 열을 기준으로 해서 정해진 규칙과 곱함 */
 void MixColumns(unsigned char state[4][4])
 {
     unsigned char temp[4][4];
@@ -81,22 +76,18 @@ void MixColumns(unsigned char state[4][4])
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             state[i][j] = temp[i][j];
-            //printf("%02x ", (unsigned int)state[i][j]);
         }
-        //printf("\n");
     }
 }
-
+// 미리 생성된 키확장으로 생성된 해당 라운드의Roundkey를 입력받아 state와 XOR해서 state를 갱신
 void AddRoundKey(unsigned char state[4][4], unsigned char roundKey[4][4]){
     for(int i=0; i<4; i++){
         for(int j=0; j<4; j++){
             state[i][j] ^= roundKey[i][j];
-            //printf("%02x ", state[i][j]);
         }
-        //printf("\n");
     }    
 }
-
+// 4바이트 워드를 왼쪽으로 1바이트 순환 이동
 void RotWord(unsigned char word[4]){
     unsigned char temp = word[0];
     
@@ -105,7 +96,8 @@ void RotWord(unsigned char word[4]){
     }
     word [3] = temp;
 }
-
+/* 1. 상위 4비트와 하위 4비트로 구분
+   2. sbox의 값과 치환*/
 void SubWord(unsigned char word[4]){
     for(int i=0; i<4; i++){
         unsigned char row = (word[i] >> 4) & 0x0f;
@@ -114,62 +106,57 @@ void SubWord(unsigned char word[4]){
         word[i] = sbox[row][column];
     }
 }
-
+// 키 확장에서 사용하는 라운드 상수
 static const unsigned char rcon[10] = {
     0x01, 0x02, 0x04, 0x08, 0x10,
     0x20, 0x40, 0x80, 0x1b, 0x36
 };
-
+/* 원래 16바이트 키를 받아서 176바이트로 키를 확장
+   1. 0~15 까지는 기존 키 사용
+   2. 이후 16개씩 끊어서 각 라운드마다 키 확장 */
 void keyExpansion(const unsigned char key[4][4], unsigned char expandedKey[176] ){
     unsigned char temp[4];
-    int bytesGenerated = 16;
+    int bcount = 16;
     int rconIndex = 0;
 
-    for (int column = 0; column < 4; column++) {
-        for (int row = 0; row < 4; row++) {
-            expandedKey[column * 4 + row] =
-                key[row][column];
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            expandedKey[i*4 + j] =
+                key[j][i];
         }
     }
 
-    while (bytesGenerated < 176) {
+    while (bcount < 176) {
         for (int i = 0; i < 4; i++) {
             temp[i] =
-                expandedKey[bytesGenerated - 4 + i];
+                expandedKey[bcount - 4 + i];
         }
-
-        if (bytesGenerated % 16 == 0) {
+        if (bcount % 16 == 0) {
             RotWord(temp);
             SubWord(temp);
-
             temp[0] ^= rcon[rconIndex];
             rconIndex++;
         }
-
         for (int i = 0; i < 4; i++) {
-            expandedKey[bytesGenerated] =
-                expandedKey[bytesGenerated - 16] ^ temp[i];
-
-            bytesGenerated++;
+            expandedKey[bcount] =
+                expandedKey[bcount - 16] ^ temp[i];
+            bcount++;
         }
     }
 }
-
-void GetRoundKey(
-    const unsigned char expandedKey[176],
-    int round,
-    unsigned char roundKey[4][4])
-{
+/* 1. 라운드 키의 시작 위치를 구함
+   2. 확장키[176]에 저장된 16바이트를 읽음
+   3. 열 우선으로 라운드키에 배치*/
+void GetRoundKey(const unsigned char expandedKey[176], int round, unsigned char roundKey[4][4]){
     int start = round * 16;
-
-    for (int column = 0; column < 4; column++) {
-        for (int row = 0; row < 4; row++) {
-            roundKey[row][column] =
-                expandedKey[start + column * 4 + row];
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<4; j++) {
+            roundKey[j][i] =
+                expandedKey[start + i*4 + j];
         }
     }
 }
-
+// 16 바이트 평문 배열을 state[4][4] 배열로 열 우선 배치
 void load_state(unsigned char plain[16], unsigned char state[4][4]){   
     for(int i=0; i<4; i++){
         for(int j=0; j<4; j++){
