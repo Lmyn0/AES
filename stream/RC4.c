@@ -6,9 +6,7 @@ unsigned char key[] = {
     0x01, 0x02, 0x03, 0x04, 0x05
 };
 unsigned char keystream[16];
-unsigned char plain[] = {
 
-};
 size_t L = sizeof(key);
 
 void KSA(){
@@ -25,7 +23,6 @@ void KSA(){
         S[i] = S[j];
         S[j] = temp[i];
     }
-
 }
 
 void PRGA(){
