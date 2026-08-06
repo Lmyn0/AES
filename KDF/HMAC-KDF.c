@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "sha256-PBKDF2.h"
+#include "sha256-KDF.h"
 
 void make_K0(const unsigned char *key, size_t HK_length, unsigned char K0[64]){
     if(HK_length == 64){
