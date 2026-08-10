@@ -1,6 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
-#include "HMAC-sha2.h"
+#include "refersha2.h"
 
 const uint32_t K[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
