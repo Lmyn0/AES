@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "HMAC-PBKDF2.h"
+#include "HMAC-KDF.h"
 
 unsigned char password[] = "password";
 unsigned char salt[] = "salt";
@@ -63,11 +63,8 @@ void PBKDF2(unsigned char *password, size_t plen, unsigned char *salt, size_t sl
             DK[32*(i - 1) + j] = temp[j];  
         }
     }
-    for(int i=0 ; i<dklen ; i++){
-        printf("%02x ", DK[i]);
-    }
 }
-
+/*
 int main(void){
     size_t plen = strlen((char *)password);
     size_t slen = strlen((char *) salt);
@@ -79,3 +76,4 @@ int main(void){
     PBKDF2(password, plen, salt, slen, c, dklen, DK);
     return 0;
 }
+*/
