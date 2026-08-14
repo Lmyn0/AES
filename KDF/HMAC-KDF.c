@@ -40,8 +40,7 @@ void xoropad(unsigned char K0[64], unsigned char *output){
     }
 }
 
-void HMAC(unsigned char *HK, size_t HK_length, unsigned char *text, size_t text_length, unsigned char output_sha[32]
-)
+void HMAC(unsigned char *HK, size_t HK_length, unsigned char *text, size_t text_length, unsigned char output_sha[32])
 {
     unsigned char K0[64] = {0x00};
 
