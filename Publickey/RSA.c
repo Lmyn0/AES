@@ -4,7 +4,7 @@
 
 mpz_t p; mpz_t q; mpz_t n; mpz_t e; mpz_t d; mpz_t x; mpz_t lambda;
 mpz_t temp; mpz_t temp1; mpz_t temp2; mpz_t temp3;  mpz_t temp4; mpz_t limit;
-mpz_t m; mpz_t c; mpz_t counter_mpz;
+mpz_t m; mpz_t c; mpz_t counter_mpz; mpz_t s;
 unsigned char seed[32] = {
     0x00, 0x01, 0x02, 0x03,
     0x04, 0x05, 0x06, 0x07,
@@ -15,6 +15,16 @@ unsigned char seed[32] = {
     0x18, 0x19, 0x1a, 0x1b,
     0x1c, 0x1d, 0x1e, 0x1f
     };
+unsigned char salt[32] = {
+    0x00, 0x01, 0x02, 0x03,
+    0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0a, 0x0b,
+    0x0c, 0x0d, 0x0e, 0x0f,
+    0x10, 0x11, 0x12, 0x13,
+    0x14, 0x15, 0x16, 0x17,
+    0x18, 0x19, 0x1a, 0x1b,
+    0x1c, 0x1d, 0x1e, 0x1f
+};
 void RSA_key(){
     mpz_mul(n, p, q);
     mpz_sub_ui(temp1, p, 1);
@@ -140,9 +150,133 @@ void OAEP_Encode(unsigned char *L, size_t Llen, unsigned char *lHash, unsigned c
         EM[1 + hlen + i] = maskedDB[i];
     }
 }
-
+void EMSA_PSS(unsigned char *M, size_t mlen, unsigned char *EM, size_t embits, size_t hlen, size_t slen){
+    unsigned char mHash[32];
+    sha256(M, mlen, mHash);
+    size_t emlen = (embits + 7) / 8;
+    if(emlen < hlen + slen + 2){
+        printf("encoding error");
+        return;
+    }
+    unsigned char M_prime[hlen + slen + 8];
+    for(size_t i=0 ; i<8 ; i++){
+        M_prime[i] = 0x00;
+    }
+    for(size_t i=0 ; i<hlen ; i++){
+        M_prime[8 + i] = mHash[i];
+    }
+    for(size_t i=0 ; i<slen ; i++){
+        M_prime[8 + hlen + i] = salt[i];
+    }
+    unsigned char H[32];
+    sha256(M_prime, 8 + hlen + slen, H);
+    size_t pslen = emlen - slen - hlen - 2;
+    unsigned char PS[pslen]; unsigned char DB[emlen - hlen - 1];
+    for(size_t i=0 ; i<pslen ; i++){
+        PS[i] = 0x00;
+    }
+    for(size_t i=0 ; i<pslen ; i++){
+        DB[i] = PS[i];
+    }
+    DB[pslen] = 0x01;
+    for(size_t i=0 ; i<slen ; i++){
+        DB[pslen + 1 + i] = salt[i];
+    }
+    size_t dbmasklen = emlen - hlen - 1;
+    unsigned char dbmask[dbmasklen]; unsigned char maskedDB[dbmasklen];
+    MGF1(H, hlen, dbmask, dbmasklen);
+    for(size_t i=0 ; i<dbmasklen ; i++){
+        maskedDB[i] = DB[i] ^ dbmask[i];
+    }
+    size_t unused_bits = 8 * emlen - embits;
+    maskedDB[0] &= 0xFF >> unused_bits;
+    for(size_t i=0 ; i<dbmasklen ; i++){
+        EM[i] = maskedDB[i];
+    }
+    for(size_t i=0 ; i<hlen ; i++){
+        EM[dbmasklen + i] = H[i];
+    }
+    EM[emlen-1] = 0xbc;
+}
+void RSASP1(mpz_t m, mpz_t d, mpz_t n, mpz_t s){
+    if(mpz_sgn(m) < 0){
+        printf("message representative out of range");
+        return;
+    }
+    else if(mpz_cmp(n, m) <= 0){
+        printf("message representative out of range");
+        return;
+    }
+    mpz_powm(s, m, d, n);
+}
+int EMSA_PSS_verify(unsigned char *M, size_t mlen, unsigned char *EM, size_t embits, size_t hlen, size_t emlen, size_t slen){
+    unsigned char mHash[32];
+    sha256(M, mlen, mHash);
+    if(EM[emlen - 1] != 0xbc){
+        return 0;
+    }
+    size_t dbmasklen = emlen - hlen - 1;
+    unsigned char maskedDB[dbmasklen]; unsigned char H[32];
+    for(size_t i=0 ; i<dbmasklen ; i++){
+        maskedDB[i] = EM[i];
+    }
+    for(size_t i=0 ; i<hlen ; i++){
+        H[i] = EM[dbmasklen + i];
+    }
+    size_t unused_bits = 8 * emlen - embits;
+    if((maskedDB[0] & (0xFF << (8 - unused_bits))) != 0){
+        return 0;
+    }
+    unsigned char dbMask[dbmasklen]; unsigned char DB[dbmasklen];
+    MGF1(H, hlen, dbMask, dbmasklen);
+    for(size_t i=0 ; i<dbmasklen ; i++){
+        DB[i] = maskedDB[i] ^ dbMask[i];
+    }
+    DB[0] &= 0xFF >> unused_bits;
+    size_t pslen = emlen - hlen - slen - 2;
+    for(size_t i=0; i<pslen; i++){
+        if(DB[i] != 0x00){
+            return 0;
+        }
+    }
+    if(DB[pslen] != 0x01){
+        return 0;
+    }
+    unsigned char tempsalt[slen]; unsigned char m_prime[8 + hlen + slen];
+    unsigned char H_prime[hlen];
+    for(size_t i=0; i<slen; i++){
+        tempsalt[i] = DB[pslen + 1 + i];
+    }
+    for(size_t i=0 ; i<8 ; i++){
+        m_prime[i] = 0x00;
+    }
+    for(size_t i=0 ; i<hlen ; i++){
+        m_prime[8 + i] = mHash[i];
+    }
+    for(size_t i=0 ; i<slen ; i++){
+        m_prime[8 + hlen + i] = tempsalt[i];
+    }
+    sha256(m_prime, 8 + hlen + slen, H_prime);
+    for(size_t i=0; i<hlen; i++){
+        if(H[i] != H_prime[i]){
+            return 0;
+        }
+    }
+    return 1;
+}
+void RSAVP1(mpz_t s, mpz_t e, mpz_t n, mpz_t m){
+    if(mpz_sgn(s) < 0){
+        printf("message representative out of range");
+        return;
+    }
+    else if(mpz_cmp(n, s) <= 0){
+        printf("message representative out of range");
+        return;
+    }
+    mpz_powm(m, s, e, n);
+}
 int main(void){
-    mpz_init(p); mpz_init(q); mpz_init(n); mpz_init(e); mpz_init(d); mpz_init(x);
+    mpz_init(p); mpz_init(q); mpz_init(n); mpz_init(e); mpz_init(d); mpz_init(x); mpz_init(s);
     mpz_init(lambda); mpz_init(limit); mpz_init(m); mpz_init(c); mpz_init(counter_mpz);
     mpz_init(temp); mpz_init(temp1); mpz_init(temp2); mpz_init(temp3); mpz_init(temp4);
 
@@ -170,5 +304,34 @@ int main(void){
         if((i + 1) % 16 == 0){
             printf("\n");
         }
+    }
+
+    printf("===========================\n");
+    
+    size_t slen = 32; size_t modbits = mpz_sizeinbase(n, 2); size_t embits = modbits - 1; 
+    size_t emlen = (embits + 7) / 8;
+    unsigned char S[k];
+    EMSA_PSS(M, mlen, EM, embits, hlen, slen);
+    OS2IP(EM, emlen, m);
+    RSASP1(m, d, n, s);
+    I2OSP(S, k, s);
+    for(size_t i=0; i<k; i++){
+        printf("%02x ", S[i]);
+        if((i + 1) % 16 == 0){
+            printf("\n");
+        }
+    }
+
+    printf("===========================\n");
+
+    unsigned char EM_verify[emlen];
+    OS2IP(S, k, s);
+    RSAVP1(s, e, n, m);
+    I2OSP(EM_verify, emlen, m);
+    if(EMSA_PSS_verify(M, mlen, EM_verify, embits, hlen, emlen, slen)){
+        printf("valid signature\n");
+    }
+    else{
+        printf("invalid signature\n");
     }
 }
