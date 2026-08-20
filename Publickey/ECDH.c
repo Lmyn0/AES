@@ -109,8 +109,8 @@ int main(){
     mpz_set_ui(p, 1); 
     mpz_mul_2exp(p, p, 255);
     mpz_sub_ui(p, p, 19);
-
     basepoint[0] = 0x09;
+    // Alice
     printf("Alice's key\n");
     decodeScalar25519(a, k);
     decodeUCoordinate(basepoint, u_int);
@@ -122,6 +122,7 @@ int main(){
             printf("\n");
         }
     }
+    // Bob
     printf("Bob's key\n");
     decodeScalar25519(b, k);
     decodeUCoordinate(basepoint, u_int);
@@ -133,6 +134,7 @@ int main(){
             printf("\n");
         }
     }
+    // Alice 개인키, Bob 공개키
     printf("Shared_A\n");
     decodeScalar25519(a, k);
     decodeUCoordinate(KB, u_int);
@@ -144,6 +146,7 @@ int main(){
             printf("\n");
         }
     }
+    // Bob 개인키, Alice 공개키
     printf("Shared_B\n");
     decodeScalar25519(b, k);
     decodeUCoordinate(KA, u_int);
